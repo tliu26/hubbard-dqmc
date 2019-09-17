@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 	if (params.use_phonons)
 	{
 		AllocatePhononData(params.Norb, params.Nx, params.Ny, params.pbc_shift, params.L,
-			params.nsampl * params.L / params.neqlt, &meas_data_phonon);
+			params.nsampl, &meas_data_phonon);
 	}
 
 	// dimensions

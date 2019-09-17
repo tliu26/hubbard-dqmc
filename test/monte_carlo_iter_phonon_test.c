@@ -1,5 +1,4 @@
 #include "monte_carlo.h"
-#include "profiler.h"
 #include "util.h"
 #include <mkl.h>
 #include <math.h>
@@ -64,10 +63,7 @@ int MonteCarloIterPhononTest()
 	params.phonon_params.local_box_width = 12;
 	params.phonon_params.n_local_updates = 40;
 	params.phonon_params.n_block_updates = 0;   // disable block updates
-
-
-	// initialize profiling (to avoid runtime exception: profiler called by DQMCPhononIteration)
-	Profile_Start();
+	params.phonon_params.omega_p = 0.01;
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
@@ -119,7 +115,7 @@ int MonteCarloIterPhononTest()
 
 	// perform a Determinant Quantum Monte Carlo (DQMC) iteration
 	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice with %i orbitals per unit cell, taking phonons into account...\n", params.Nx, params.Ny, params.Norb);
-	DQMCPhononIteration(params.dt, params.mu, &kinetic, false, &stratonovich_params, &params.phonon_params, params.nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, 0, NULL, &meas_data_phonon);
+	DQMCPhononIteration(params.dt, params.mu, &kinetic, false, &stratonovich_params, &params.phonon_params, params.nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, 0, NULL, &meas_data_phonon, params.Ny, params.Nx);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
 	spin_field_t *s_ref = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
@@ -178,7 +174,6 @@ int MonteCarloIterPhononTest()
 	printf("Relative determinant error: %g\n", err_detG);
 
 	// clean up
-	Profile_Stop();
 	MKL_free(Gd_mat_ref);
 	MKL_free(Gu_mat_ref);
 	MKL_free(X_ref);

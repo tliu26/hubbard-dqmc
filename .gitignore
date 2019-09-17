@@ -5,7 +5,7 @@
 *.dll
 
 # ignore output directory
-/output/
+output/
 
 # ignore some temporary files
 *.out
@@ -24,3 +24,8 @@ Release/
 
 # ignore obsolete directories
 obsolete/
+
+# ignore vscode, binaries
+.vscode/
+bin/hubbard_dqmc
+bin/run_tests

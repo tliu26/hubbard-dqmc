@@ -16,24 +16,28 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *restrict kinetic, const int noHS, const stratonovich_params_t *restrict stratonovich_params, const phonon_params_t *restrict phonon_params,
 	const int nwraps, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX,
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
-	const int neqlt, measurement_data_t *restrict meas_data, measurement_data_phonon_t *restrict meas_data_phonon);
+	const int neqlt, measurement_data_t *restrict meas_data, measurement_data_phonon_t *restrict meas_data_phonon,
+	const int Ny, const int Nx);
 
 
 void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
 	const phonon_params_t *restrict phonon_params, randseed_t *restrict seed, const spin_field_t *restrict s, double *restrict X, double *restrict expX,
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
-	int *n_block_accept, int *n_block_total);
+	int *n_block_accept, int *n_block_total, const int Ny, const int Nx);
 
 
 void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
 	const phonon_params_t *restrict phonon_params, randseed_t *restrict seed, const spin_field_t *restrict s, double *restrict X, double *restrict expX,
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
-	int *n_block_accept, int *n_block_total);
+	int *n_block_accept, int *n_block_total, const int Ny, const int Nx);
 
 
 void DQMCSimulation(const sim_params_t *restrict params,
 	measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt, measurement_data_phonon_t *restrict meas_data_phonon,
 	int *restrict i_start, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX);
+
+
+void GetOxygenNN(const int i, const int o, const int Nx, const int Ny, int *kp1, int *kp2, int *kp3, int *kp4);
 
 
 

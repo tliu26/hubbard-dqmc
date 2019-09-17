@@ -162,6 +162,10 @@ typedef struct
 
 	int nsampl;                 //!< number of accumulated samples
 	int max_nsampl;             //!< what nsampl should be at the end
+
+	// phonon unequal time
+	int *latt_sum_map;          // lattice site index of coordinate sum of two lattice sites; matrix of size Ncell x Ncell
+	double *XX_corrr;			// phonon XX "correlation"
 }
 measurement_data_phonon_t;
 

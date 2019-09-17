@@ -1,5 +1,4 @@
 #include "monte_carlo.h"
-#include "profiler.h"
 #include "util.h"
 #include <mkl.h>
 #include <math.h>
@@ -75,9 +74,7 @@ int MonteCarloPhononBlockTest()
 	params.phonon_params.block_box_width = 2;
 	params.phonon_params.n_local_updates = 2;
 	params.phonon_params.n_block_updates = 2;
-
-	// initialize profiling (to avoid runtime exception: profiler called during GreenConstruct)
-	Profile_Start();
+	params.phonon_params.omega_p = 0.01;
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
@@ -127,7 +124,7 @@ int MonteCarloPhononBlockTest()
 	// perform phonon block updates (first update will be accepted and second rejected)
 	printf("Performing phonon block updates on a %i x %i lattice with %i orbitals per unit cell at beta = %g...\n", params.Nx, params.Ny, params.Norb, params.L*params.dt);
 	int n_block_accept, n_block_total;
-	PhononBlockUpdates(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, &n_block_accept, &n_block_total);
+	PhononBlockUpdates(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, &n_block_accept, &n_block_total, params.Ny, params.Nx);
 
 	// load reference phonon field from disk
 	double *X_ref    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
@@ -174,7 +171,6 @@ int MonteCarloPhononBlockTest()
 	printf("Relative determinant error: %g\n", err_detG);
 
 	// clean up
-	Profile_Stop();
 	MKL_free(Gd_mat_ref);
 	MKL_free(Gu_mat_ref);
 	MKL_free(expX_ref);

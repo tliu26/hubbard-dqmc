@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <stdio.h>
+#include <time.h>
 
 
 int BlockCyclicQRTest()

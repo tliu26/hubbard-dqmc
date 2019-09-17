@@ -202,7 +202,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
 	const phonon_params_t *restrict phonon_params, randseed_t *restrict seed, const spin_field_t *restrict s, double *restrict X, double *restrict expX,
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
-	int *n_block_accept, int *n_block_total)
+	int *n_block_accept, int *n_block_total, const int Ny, const int Nx)
 {
 	__assume_aligned(   X, MEM_DATA_ALIGN);
 	__assume_aligned(expX, MEM_DATA_ALIGN);
@@ -262,11 +262,17 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 
 		// calculate change of the phonon (lattice) energy
 		double dEph = 0;
+		double dEph1 = 0;
 		for (l = 0; l < L; l++)
 		{
 			dEph += (dx + 2*X[i + l*N]);
+			// calculate OxOy contribution to dEph
+			int kp1, kp2, kp3, kp4;
+			GetOxygenNN(i, o, Nx, Ny, &kp1, &kp2, &kp3, &kp4);
+			dEph1 += (X[kp1 + l*N] + X[kp2 + l*N] + X[kp3 + l*N] + X[kp4 + l*N]);
 		}
 		dEph *= 0.5*square(phonon_params->omega[o]) * dx;
+		dEph += square(phonon_params->omega_p) * dx * dEph1;
 
 		// actually shift phonon field entries
 		for (l = 0; l < L; l++)
@@ -351,7 +357,7 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
 	const phonon_params_t *restrict phonon_params, randseed_t *restrict seed, const spin_field_t *restrict s, double *restrict X, double *restrict expX,
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
-	int *n_flip_accept, int *n_flip_total)
+	int *n_flip_accept, int *n_flip_total, const int Ny, const int Nx)
 {
 	__assume_aligned(   X, MEM_DATA_ALIGN);
 	__assume_aligned(expX, MEM_DATA_ALIGN);
@@ -414,6 +420,12 @@ void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restri
 		for (l = 0; l < L; l++)
 		{
 			dEph += 0.5*square(phonon_params->omega[o]) * (-flip) * (-flip + 2*X_ref[l]);
+
+			// calculate OxOy contribution to dEph
+			int kp1, kp2, kp3, kp4;
+			GetOxygenNN(i, o, Nx, Ny, &kp1, &kp2, &kp3, &kp4);
+			dEph += square(phonon_params->omega_p) * (flip - 2*X_ref[l]) * (X[kp1 + l*N] + X[kp2 + l*N] + X[kp3 + l*N] + X[kp4 + l*N]);
+
 			X[i + l*N] = flip - X_ref[l];
 			expX[i + l*N] = exp(-dt*phonon_params->g[o] * X[i + l*N]);
 		}
@@ -497,7 +509,8 @@ void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restri
 void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *restrict kinetic, const int noHS, const stratonovich_params_t *restrict stratonovich_params, const phonon_params_t *restrict phonon_params,
 	const int nwraps, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX,
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
-	const int neqlt, measurement_data_t *restrict meas_data, measurement_data_phonon_t *restrict meas_data_phonon)
+	const int neqlt, measurement_data_t *restrict meas_data, measurement_data_phonon_t *restrict meas_data_phonon,
+	const int Ny, const int Nx)
 {
 	Profile_Begin("DQMCIter");
 	__assume_aligned(s, MEM_DATA_ALIGN);
@@ -615,8 +628,12 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 			const double dd = 1 + (1 - Gd->mat[i + i*N]) * delta;
 
 			// change of the phonon (lattice) energy
-			const double dEph = dx * (0.5*square(phonon_params->omega[o])*(dx + 2*X[i + l*N]) + inv_dt_sq*(dx - (X[i + l_next*N] - 2*X[i + l*N] + X[i + l_prev*N])));
+			double dEph = dx * (0.5*square(phonon_params->omega[o])*(dx + 2*X[i + l*N]) + inv_dt_sq*(dx - (X[i + l_next*N] - 2*X[i + l*N] + X[i + l_prev*N])));
 
+			// calculate OxOy contribution to dEph
+			int kp1, kp2, kp3, kp4;
+			GetOxygenNN(i, o, Nx, Ny, &kp1, &kp2, &kp3, &kp4);
+			dEph += square(phonon_params->omega_p) * dx * (X[kp1 + l*N] + X[kp2 + l*N] + X[kp3 + l*N] + X[kp4 + l*N]);
 			meas_data_phonon->n_local_total++;
 			if (Random_GetUniform(seed) < fabs(du*dd) * exp(-dt * dEph))
 			{
@@ -697,7 +714,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 			Profile_Begin("DQMCIter_AccumulateEqMeas");
 			AccumulateMeasurement(Gu, Gd, meas_data);
 			Profile_End("DQMCIter_AccumulateEqMeas");
-
+		} else if (neqlt > 0 && l == 0) {
 			// accumulate phonon data
 			Profile_Begin("DQMCIter_AccumulatePhonon");
 			AccumulatePhononData(Gu, Gd, l, X, dt, phonon_params->omega, meas_data_phonon);
@@ -708,12 +725,12 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 	// perform block updates
 	Profile_Begin("DQMCIter_PhononBlock");
 	PhononBlockUpdates(dt, kinetic, stratonovich_params, phonon_params, seed, s, X, expX, tsm_u, tsm_d, Gu, Gd,
-	                   &meas_data_phonon->n_block_accept, &meas_data_phonon->n_block_total);
+	                   &meas_data_phonon->n_block_accept, &meas_data_phonon->n_block_total, Ny, Nx);
 	Profile_End("DQMCIter_PhononBlock");
 
 	Profile_Begin("DQMCIter_PhononFlip");
 	PhononFlipUpdates(dt, mu, kinetic, stratonovich_params, phonon_params, seed, s, X, expX, tsm_u, tsm_d, Gu, Gd,
-	                  &meas_data_phonon->n_flip_accept, &meas_data_phonon->n_flip_total);
+	                  &meas_data_phonon->n_flip_accept, &meas_data_phonon->n_flip_total, Ny, Nx);
 	Profile_End("DQMCIter_PhononFlip");
 
 	// clean up
@@ -836,7 +853,7 @@ void DQMCSimulation(const sim_params_t *restrict params,
 
 		if (params->use_phonons)
 		{
-			DQMCPhononIteration(params->dt, params->mu, &kinetic, noHS, &stratonovich_params, &params->phonon_params, params->nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, neqlt, meas_data, meas_data_phonon);
+			DQMCPhononIteration(params->dt, params->mu, &kinetic, noHS, &stratonovich_params, &params->phonon_params, params->nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, neqlt, meas_data, meas_data_phonon, params->Ny, params->Nx);
 		}
 		else
 		{
@@ -861,4 +878,34 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	DeleteTimeStepMatrices(&tsm_u);
 	DeleteStratonovichParameters(&stratonovich_params);
 	DeleteKineticExponential(&kinetic);
+}
+
+
+
+void GetOxygenNN(const int i, const int o, const int Nx, const int Ny, int *kp1, int *kp2, int *kp3, int *kp4)
+{
+	const int Ncell = Nx * Ny;
+	const int k = i % Ncell;
+	const int ky = k / Nx;
+	const int kx = k % Nx;
+	if (o == 1)
+	{
+		// currently at Ox
+		const int xp = (kx < Nx - 1 ? kx + 1 : 0     );
+		const int ym = (ky > 0      ? ky - 1 : Ny - 1);
+		*kp1 = xp + Nx * ky + Ncell * 2;
+		*kp2 = kx + Nx * ky + Ncell * 2;
+		*kp3 = kx + Nx * ym + Ncell * 2;
+		*kp4 = xp + Nx * ym + Ncell * 2;
+	}
+	else if (o == 2)
+	{
+		// currently at Oy
+		const int xm = (kx > 0      ? kx - 1 : Nx - 1);
+		const int yp = (ky < Ny - 1 ? ky + 1 : 0     );
+		*kp1 = kx + Nx * yp + Ncell * 1;
+		*kp2 = xm + Nx * yp + Ncell * 1;
+		*kp3 = xm + Nx * ky + Ncell * 1;
+		*kp4 = kx + Nx * ky + Ncell * 1;
+	}
 }

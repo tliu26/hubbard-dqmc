@@ -54,6 +54,7 @@ typedef struct
 	int n_local_updates;        //!< number of local phonon updates
 	double block_box_width;     //!< as above, for block updates
 	int n_block_updates;        //!< number of phonon block updates at random sites, for each full iteration over lattice sites and time slices; set to zero to disable block updates
+	double omega_p;				//!< coupling b/t x-y phonon
 }
 phonon_params_t;
 
